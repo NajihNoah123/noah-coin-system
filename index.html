@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noah's Quest Hub </title>
+
+    <!-- Supabase JavaScript Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --bg-image: url('assets/default.jpg');
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body.theme-default { --primary: #0ea5e9; --primary-dark: #0284c7; background: url('assets/default.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-space { --primary: #6366f1; --primary-dark: #4f46e5; background: url('assets/space.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-arcade { --primary: #8b5cf6; --primary-dark: #7c3aed; background: url('assets/arcade.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-scifi { --primary: #10b981; --primary-dark: #059669; background: url('assets/scifi.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-cyberpunk { --primary: #f43f5e; --primary-dark: #e11d48; background: url('assets/cyberpunk.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-sunset { --primary: #f97316; --primary-dark: #ea580c; background: url('assets/sunset.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-matrix { --primary: #22c55e; --primary-dark: #16a34a; background: url('assets/matrix.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-gold { --primary: #eab308; --primary-dark: #ca8a04; background: url('assets/gold.png') no-repeat center center fixed; background-size: cover; }
+        body.theme-ocean { --primary: #06b6d4; --primary-dark: #0891b2; background: url('assets/ocean.jpg') no-repeat center center fixed; background-size: cover; }
+        body.theme-midnight { --primary: #a855f7; --primary-dark: #9333ea; background: url('assets/midnight.jpg') no-repeat center center fixed; background-size: cover; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-main);
+            margin: 0; padding: 20px; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.3s ease;
+        }
+        .container {
+            width: 100%; max-width: 950px; background: var(--card-bg); backdrop-filter: blur(10px);
+            padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            border: 3px solid var(--primary); position: relative; max-height: 90vh; overflow-y: auto;
+        }
+        .view { display: none; }
+        .view.active { display: block; }
+
+        @keyframes spinWheel { 0% { transform: rotate(0deg); } 100% { transform: rotate(1440deg); } }
+        .spinning { animation: spinWheel 1.2s cubic-bezier(0.15, 0.85, 0.35, 1) forwards; }
+
+        #lockdownModal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(239, 68, 68, 0.96); z-index: 999; border-radius: 17px;
+            color: white; text-align: center; padding: 30px; box-sizing: border-box; overflow-y: auto;
+        }
+        #lockdownModal h1 { color: #fef08a; font-size: 2.2rem; margin-bottom: 5px; }
+        .timer-box {
+            background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;
+            font-size: 1.1rem; font-family: monospace; margin: 15px 0; border: 1px dashed rgba(255,255,255,0.4);
+            text-align: left;
+        }
+
+        #pinModal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9); z-index: 1000; border-radius: 17px; color: white;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .keypad-box {
+            background: #1e293b; padding: 25px; border-radius: 16px; border: 2px solid var(--primary);
+            text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .pin-display {
+            background: #0f172a; color: #fef08a; font-size: 2rem; letter-spacing: 8px;
+            padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #334155; height: 40px;
+        }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .key-btn {
+            background: #334155; color: white; border: none; padding: 15px;
+            font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer;
+        }
+        .key-btn:hover { background: #475569; }
+        .key-btn.action-key { background: #0ea5e9; }
+        .key-btn.clear-key { background: #ef4444; }
+
+        #topicModal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 998; border-radius: 17px; color: white; padding: 30px; box-sizing: border-box; overflow-y: auto;
+        }
+
+        .profile-header { text-align: center; margin-bottom: 25px; }
+        .avatar-img {
+            width: 90px; height: 90px; background: #cbd5e1; border-radius: 50%;
+            margin: 0 auto 10px auto; display: flex; align-items: center; justify-content: center;
+            object-fit: cover; border: 4px solid var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 { color: var(--primary-dark); font-size: 1.8rem; margin: 0; }
+        
+        .stats-bar { display: flex; justify-content: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+        .stat-pill { background: #fef08a; color: #854d0e; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.95rem; }
+        .stat-pill.xp-pill { background: #e0f2fe; color: #0369a1; }
+        .stat-pill.streak-pill { background: #ffedd5; color: #9a3412; }
+
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .menu-btn {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none;
+            padding: 18px; border-radius: 14px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); text-align: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+        }
+        .menu-btn:hover { transform: scale(1.02); }
+        .menu-btn.learning-btn { background: linear-gradient(135deg, #10b981, #059669); }
+        .menu-btn.store-btn { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .menu-btn.rulebook-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .menu-btn.entertainment-btn { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .menu-btn.admin-btn { background: linear-gradient(135deg, #64748b, #475569); }
+
+        .back-btn { background: #e2e8f0; color: #475569; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        .section-title { color: var(--primary-dark); border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; }
+        
+        .card {
+            background: rgba(248, 250, 252, 0.95); border-radius: 10px; padding: 15px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #22c55e; border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .card.completed-task {
+            background: #e2e8f0 !important;
+            opacity: 0.65;
+            border-left-color: #94a3b8 !important;
+        }
+        .card.completed-task span {
+            text-decoration: line-through;
+            color: #64748b;
+        }
+
+        .card-learning { border-left-color: #10b981; flex-direction: column; align-items: stretch; gap: 10px; }
+        .card-store { border-left-color: #eab308; }
+        .card-penalty { border-left-color: #ef4444; }
+
+        button.action-btn { background: #22c55e; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-learning { background: #10b981; }
+        .btn-store { background: #eab308; color: #713f12; }
+        .btn-penalty { background: #ef4444; }
+
+        /* Compact Speaker Button */
+        .speak-btn { background: #38bdf8; color: white; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-left: 6px; display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+        
+        .topic-row { background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+        .timeline-box { background: #f1f5f9; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted); max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; }
+        .custom-input { padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; width: 70px; font-weight: bold; }
+        
+        .lesson-video-box { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
+        .lesson-video-box iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .lesson-diagram { max-width: 100%; height: auto; border-radius: 6px; margin-top: 10px; border: 1px solid #334155; }
+        
+        /* Warning Banner Styles */
+        #warningBannerContainer { display: none; margin-bottom: 15px; }
+        .warning-banner {
+            background: #fef2f2; border: 2px solid #ef4444; color: #991b1b; padding: 12px 16px;
+            border-radius: 10px; font-weight: bold; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainContainer" onscroll="/* Scrolled container reference */">
+
+    <!-- COIN LOCKDOWN MODAL -->
+    <div id="lockdownModal">
+        <h1>⚠️ STRICT ZERO COIN LOCKDOWN ⚠️ <button class="speak-btn" onclick="speakSlowly('Strict zero coin lockdown. Noahs balance has hit zero.')">🔊</button></h1>
+        <p>Noah's balance has 0 coins! Rulebook penalty activated:</p>
+        <div class="timer-box">
+            <b>🔴 Active Restrictions (Rulebook Act 3):</b><br>
+            • -10 Coin Penalty Applied[cite: 1]<br>
+            • <b>5 Days</b> of No Playing with Friends[cite: 1]<br>
+            • <b>8 days</b> of No Devices / Lockdown[cite: 1]
+            ⏳ <b>Time Remaining in Lockdown:</b> <span id="lockdownCountdownTimer" style="color: #fef08a; font-weight: bold;">Loading...</span>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
+            <button onclick="requestAdminAction('lift_lockdown', 0, 0, 'Immediate Lockdown Lift'); document.getElementById('lockdownModal').style.display='none';" style="background:#fef08a; color:#854d0e; padding:12px 20px; font-size:0.95rem; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">⚡ Grant Parent Lift & Restore 3 Coins</button>
+        </div>
+    </div>
+
+    <!-- CUSTOM NUMBER KEYPAD PIN MODAL -->
+    <div id="pinModal">
+        <div class="keypad-box">
+            <h3 style="margin-top:0; color:#38bdf8;">🔒 Admin Verification <button class="speak-btn" onclick="speakSlowly('Admin Verification Pin required')">🔊</button></h3>
+            <div class="pin-display" id="pinDisplay">****</div>
+            <div class="keypad-grid">
+                <button class="key-btn" onclick="pressKey('1')">1</button>
+                <button class="key-btn" onclick="pressKey('2')">2</button>
+                <button class="key-btn" onclick="pressKey('3')">3</button>
+                <button class="key-btn" onclick="pressKey('4')">4</button>
+                <button class="key-btn" onclick="pressKey('5')">5</button>
+                <button class="key-btn" onclick="pressKey('6')">6</button>
+                <button class="key-btn" onclick="pressKey('7')">7</button>
+                <button class="key-btn" onclick="pressKey('8')">8</button>
+                <button class="key-btn" onclick="pressKey('9')">9</button>
+                <button class="key-btn clear-key" onclick="clearPin()">C</button>
+                <button class="key-btn" onclick="pressKey('0')">0</button>
+                <button class="key-btn action-key" onclick="submitPin()">✔</button>
+            </div>
+            <button onclick="closePinModal()" style="background:none; border:none; color:#94a3b8; margin-top:15px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- SUBJECT TOPIC STUDY MODAL -->
+    <div id="topicModal">
+        <button class="back-btn" onclick="closeTopicModal()">← Back to Learning Hub</button>
+        <h2 id="modalTopicTitle" style="color:#38bdf8; margin-top:0;">Topic Title <button class="speak-btn" onclick="speakSlowly(document.getElementById('modalTopicTitle').innerText)">🔊</button></h2>
+        
+        <div class="lesson-video-box" id="modalVideoContainer">
+            <iframe id="modalVideoIframe" src="" allowfullscreen></iframe>
+        </div>
+
+        <div style="background:#1e293b; padding:15px; border-radius:10px; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="margin:0; font-size:1.1rem; color:#fef08a;">📖 Lesson Notes & Explanation</h3>
+                <button class="speak-btn" id="modalSpeakBtn">🔊 Listen Slowly</button>
+            </div>
+            <p id="modalExplanationText" style="line-height:1.6; margin:0; font-size:0.95rem; color:#fff;">Explanation text will load here.</p>
+            <div id="modalDiagramContainer"></div>
+        </div>
+
+        <div style="background:#1e293b; padding:15px; border-radius:10px; margin-bottom:15px;">
+            <h3 style="margin-top:0; font-size:1.1rem; color:#fef08a;">📝 Interactive Worksheet</h3>
+            <div id="worksheetContentBox" style="width:100%; min-height:400px; background:#0f172a; border-radius:6px; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px;"></div>
+        </div>
+    </div>
+
+    <!-- HOME DASHBOARD -->
+    <div id="homeView" class="view active">
+        <div class="profile-header" style="position:relative;">
+            <button class="speak-btn" style="position:absolute; top:0; right:0;" onclick="speakSlowly('Welcome Noah! Complete your daily quests and learning topics to earn coins and experience points.')">🔊 Listen</button>
+            <img src="assets/noah.JPG" alt="Noah" class="avatar-img" id="avatarImgDisplay" onerror="this.src='assets/noah.JPG'">
+            <h1 id="welcomeTitle">Welcome, Noah! <button class="speak-btn" onclick="speakSlowly('Welcome Noah!')">🔊</button></h1>
+            <div class="stats-bar">
+                <div class="stat-pill">🪙 Coins: <span id="homeCoinCount">3</span> <button class="speak-btn" onclick="speakSlowly(document.getElementById('homeCoinCount').innerText + ' coins')">🔊</button></div>
+                <div class="stat-pill xp-pill">⭐ XP: <span id="homeXpCount">0</span> (<span id="homeRankTitle">Novice Explorer</span>) <button class="speak-btn" onclick="speakSlowly(document.getElementById('homeXpCount').innerText + ' experience points')">🔊</button></div>
+                <div class="stat-pill streak-pill">🔥 Streak: <span id="homeStreakCount">1</span> Day <button class="speak-btn" onclick="speakSlowly(document.getElementById('homeStreakCount').innerText + ' day streak')">🔊</button></div>
+            </div>
+        </div>
+
+        <div class="menu-grid">
+            <button class="menu-btn" onclick="switchView('tasksView')"><span>📋</span> Today's Daily Quests 
+            <button class="menu-btn learning-btn" onclick="switchView('learningView')"><span>📚</span> Learning Hub & Worksheets 
+            <button class="menu-btn entertainment-btn" onclick="switchView('entertainmentView')"><span>🎮</span> Entertainment & Screen Time 
+            <button class="menu-btn rulebook-btn" onclick="switchView('rulebookView')"><span>📖</span> Official Rulebook 
+            <button class="menu-btn store-btn" onclick="switchView('storeView')"><span>🛍️</span> The Loot Shop 
+            <button class="menu-btn admin-btn" onclick="requestAdminViewAccess()"><span>🔒</span> Parent Dashboard 
+        </div>
+    </div>
+
+    <!-- DAILY TASKS -->
+    <div id="tasksView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" id="dayTitle" style="border:none; margin:0;">📋 Daily Quests</h2>
+            <button class="speak-btn" onclick="speakSlowly('Complete your daily tasks to earn coins and experience points.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+        <div id="dynamicTasksContainer"></div>
+    </div>
+
+    <!-- LEARNING HUB (6 Modules: Story, UTW, Numeracy, Phonics, Islamic/Arabic, Literacy) -->
+    <div id="learningView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="border:none; margin:0;">📚 Learning Hub & Worksheets</h2>
+            <button class="speak-btn" onclick="speakSlowly('Explore your 6 learning subjects: Story, UTW, Numeracy, Phonics, Islamic and Arabic, and Literacy.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+
+        <!-- 2. UTW (Understanding the World) -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>🌍 UTW (Understanding the World) <button class="speak-btn" onclick="speakSlowly('Understanding the World module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Topic 1: Parts of a plant <button class="speak-btn" onclick="speakSlowly('Parts of a plant')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="utw_plant_parts">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Topic 2: Germination <button class="speak-btn" onclick="speakSlowly('The Natural World Observations')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="utw_germination">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Topic 3: Life cycle of a plant <button class="speak-btn" onclick="speakSlowly('Science and Environment Activity')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="utw_plant_life">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. NUMERACY -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>🔢 Numeracy <button class="speak-btn" onclick="speakSlowly('Numeracy module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Topic 1: Counting 1-20<button class="speak-btn" onclick="speakSlowly('Counting from 1 to 20')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="no_1-20">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Topic 2: Shapes <button class="speak-btn" onclick="speakSlowly('Shapes')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="no_shapes">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. LITERACY -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>✍️ Literacy <button class="speak-btn" onclick="speakSlowly('Literacy module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Task 1: Handwriting & Penmanship (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Handwriting and Penmanship')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 2: Sentence Building & Punctuation (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Sentence Building and Punctuation')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 3: Creative Writing Prompt (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Creative Writing Prompt')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 4: Literacy Practice Sheet (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Literacy Practice Sheet')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. PHONICS -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>🗣️ Phonics <button class="speak-btn" onclick="speakSlowly('Phonics module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Task 1: Letter Sounds & Blending (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Letter Sounds and Blending')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 2: Digraphs & Sight Words (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Digraphs and Sight Words')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 3: Word Building Activity (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Word Building Activity')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 4: Phonics Interactive Worksheet (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Phonics Interactive Worksheet')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ISLAMIC/ARABIC -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>☪️ Islamic/Arabic <button class="speak-btn" onclick="speakSlowly('Islamic and Arabic module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Task 1: Arabic Alphabet & Letter Forms (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Arabic Alphabet and Letter Forms')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 2: Basic Arabic Vocabulary (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Basic Arabic Vocabulary')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 3: Islamic Values & Duas (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Islamic Values and Duas')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+                <div class="topic-row">
+                    <span>Task 4: Islamic/Arabic Practice Sheet (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Islamic Arabic Practice Sheet')">🔊</button></span>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. STORY -->
+        <div class="card card-learning">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>📖 Story <button class="speak-btn" onclick="speakSlowly('Story module')">🔊</button></b>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                <div class="topic-row">
+                    <span>Topic 1: Hare and the Tortoise <button class="speak-btn" onclick="speakSlowly('Read Story Chapter and Comprehension')">🔊</button></span>
+                    <button class="btn-learning" data-lesson="hare_tortoise">📖 Study</button>
+                    <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENTERTAINMENT & SCREEN TIME HUB -->
+    <div id="entertainmentView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="border:none; margin:0;">🎮 Entertainment & Tab Time Hub</h2>
+            <button class="speak-btn" onclick="speakSlowly('Access YouTube and Roblox with your 25 minute free tab time limit.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+
+        <div class="card" style="border-left-color: #ec4899; background: #fdf2f8;">
+            <div>
+                <b>⏳ Free Daily Tab Time Available <button class="speak-btn" onclick="speakSlowly('Free Daily Tab Time Available')">🔊</button></b>
+                <p style="margin:4px 0 0 0; font-size:0.9rem; color:#701a75;">Free Limit: <span id="sharedTimeDisplay" style="font-weight:bold; font-size:1.1rem; color:#db2777;">25:00 Mins</span></p>
+            </div>
+        </div>
+
+        <div class="menu-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top:20px;">
+            <button class="menu-btn entertainment-btn" onclick="openTimedExternalApp('https://www.youtube.com', 'YouTube')">
+                <span style="font-size:1.8rem;">📺</span>
+                <span>Open YouTube in Browser</span>
+                <span id="youtubeTimerStatus" style="font-size:0.8rem; font-weight:normal; opacity:0.9;">Timer Active: 25:00</span>
+            </button>
+            <button class="menu-btn" style="background:linear-gradient(135deg, #8b5cf6, #6d28d9);" onclick="openTimedExternalApp('https://www.roblox.com', 'Roblox')">
+                <span style="font-size:1.8rem;">🕹️</span>
+                <span>Launch Roblox in Browser</span>
+                <span id="robloxTimerStatus" style="font-size:0.8rem; font-weight:normal; opacity:0.9;">Timer Active: 25:00</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- OFFICIAL RULEBOOK VIEW -->
+    <div id="rulebookView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="border:none; margin:0;">📖 Noah's Star System Official Rulebook</h2>
+            <button class="speak-btn" onclick="speakSlowly('Read the official rulebook, daily allowances, screen time limits, and coin guidelines.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+
+        <div class="card" style="border-left-color: #8b5cf6; flex-direction:column; align-items:flex-start; gap:6px;">
+            <b>⭐ Welcome, Player Noah! (Starting Balance: 3 Coins | Free Tab Time: 25 Mins) <button class="speak-btn" onclick="speakSlowly('Welcome Player Noah starting balance 3 coins. Completeyour daily tasks and learning tasks for coins, and use them to buy in the loot shop')">🔊</button></b>
+            <p style="margin:0; font-size:0.9rem; color:#475569;"><b>Act 1: Earning Coins</b><br>
+            • Daily Tasks: 1 coin per task, or 4 coins bonus for completing all tasks.<br>
+            • Learning: Practice sheet (+1), Weekly recap (+1).<br>
+            • Houseworking: Chores and keeping areas clean (1–3 coins).<br>
+            • Kindness: Patience, low voice, no minor fights (+2 coins).</p>
+        </div>
+
+        <div class="card" style="border-left-color: #ef4444; flex-direction:column; align-items:flex-start; gap:6px;">
+            <b>⚠️ Act 3: Official Penalties <button class="speak-btn" onclick="speakSlowly('Official Penalties. Try to avoid all these')">🔊</button></b>
+            <p style="margin:0; font-size:0.9rem; color:#475569;">
+            • Shouting & Screaming: -3 coins<br>
+            • Avoiding Worksheets: -3 coins<br>
+            • Refusing to stop playing with friends: -3 coins<br>
+            • Refusing to stop devices: -5 coins<br>
+            • Persistent Rule Breaking / Zero Coins: -10 coins, 5 days no playing with friends, 8 days no devices.</p>
+        </div>
+    </div>
+
+    <!-- THE STORE -->
+    <div id="storeView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="border:none; margin:0;">🛍️ The Loot Shop</h2>
+            <button class="speak-btn" onclick="speakSlowly('Welcome to the Loot Shop. Check your coin balance and unlock rewards.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+
+        <!-- WARNING BANNER CONTAINER -->
+        <div id="warningBannerContainer">
+            <div class="warning-banner" id="warningBannerText">
+                <span id="warningMessageContent">Warning message goes here</span>
+                <button class="speak-btn" id="warningSpeakBtn" onclick="speakSlowly(document.getElementById('warningMessageContent').innerText)">🔊 Listen</button>
+            </div>
+        </div>
+
+        <!-- CURRENT COIN BALANCE DISPLAY IN STORE -->
+        <div class="card" style="border-left-color: #eab308; background: #fefce8; justify-content: space-between;">
+            <div><b>🪙 Your Current Coins <button class="speak-btn" onclick="speakSlowly('Your current coins')">🔊</button></b><p style="margin:4px 0 0 0; font-size:0.85rem; color:#713f12;">Spend your coins on awesome rewards below!</p></div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #ca8a04;"><span id="storeCoinBalance">8</span> Coins</div>
+        </div>
+
+        <div class="card card-store" style="border: 2px dashed #eab308; background:#fefce8;">
+            <div><b>🎁 Mystery Spin Wheel (2 Coins) <button class="speak-btn" onclick="speakSlowly('Mystery Spin Wheel')">🔊</button></b><p style="margin:4px 0 0 0; font-size:0.85rem; color:#713f12;" id="spinStatusText">Win 1 coin, 2 coins, nothing, or a jackpot of 5 coins!</p></div>
+            <button class="action-btn btn-store" id="spinWheelBtn" onclick="spinMysteryWheel()">Spin</button>
+        </div>
+
+        <h3 style="color:var(--primary-dark); font-size:1rem; margin-top:15px;">🎮 Playtime & Extra Time Store <button class="speak-btn" onclick="speakSlowly('Playtime and Extra Time Store')">🔊</button></h3>
+        <div class="card card-store"><span>👥 Play with Friends (25 Mins) <button class="speak-btn" onclick="speakSlowly('Play with friends')">🔊</button></span><button class="action-btn btn-store" onclick="buyStoreItem('Play with friends', 8)">Buy (8 Coins)[cite: 1]</button></div>
+        <div class="card card-store"><span>⚡ Extra Tab Time (15 Mins) <button class="speak-btn" onclick="speakSlowly('Extra tab time')">🔊</button></span><button class="action-btn btn-store" onclick="buyStoreItem('Extra tab time', 13)">Buy (13 Coins)[cite: 1]</button></div>
+        <div class="card card-store"><span>📺 Extra TV Watching (20 Mins) <button class="speak-btn" onclick="speakSlowly('Extra TV watching')">🔊</button></span><button class="action-btn btn-store" onclick="buyStoreItem('Extra TV time', 10)">Buy (10 Coins)</button></div>
+        <div class="card card-store"><span>🍿 Snacking Treat <button class="speak-btn" onclick="speakSlowly('Snacking treat')">🔊</button></span><button class="action-btn btn-store" onclick="buyStoreItem('Snack treat', 8)">Buy (8 Coins)</button></div>
+        <div class="card card-store"><span>💵 Real Money (4 Dirhams = 30 Coins) <button class="speak-btn" onclick="speakSlowly('Real money')">🔊</button></span><button class="action-btn btn-store" onclick="buyStoreItem('Real money (4 AED)', 30)">Buy (30 Coins)</button></div>
+
+        <h3 style="color:var(--primary-dark); font-size:1rem; margin-top:15px;">🎨 Unlock App Themes (1 Coin Each) <button class="speak-btn" onclick="speakSlowly('Unlock app themes')">🔊</button></h3>
+        <div class="card card-store"><span>🌌 Space Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Space theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-space', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🕹️ Arcade Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Arcade theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-arcade', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🚀 Sci-Fi Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Sci Fi theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-scifi', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🌆 Cyberpunk Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Cyberpunk theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-cyberpunk', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🌅 Sunset Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Sunset theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-sunset', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>💻 Matrix Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Matrix theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-matrix', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🥇 Gold Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Gold theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-gold', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🌊 Ocean Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Ocean theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-ocean', 1)">Unlock (1 Coin)</button></div>
+        <div class="card card-store"><span>🌙 Midnight Wallpaper Theme <button class="speak-btn" onclick="speakSlowly('Midnight theme')">🔊</button></span><button class="action-btn btn-store" onclick="buyTheme('theme-midnight', 1)">Unlock (1 Coin)</button></div>
+    </div>
+
+    <!-- PARENT & ADMIN PANEL -->
+    <div id="adminView" class="view">
+        <button class="back-btn" onclick="switchView('homeView')">← Back to Home</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="border:none; margin:0;">🔒 Parent & Admin Dashboard</h2>
+            <button class="speak-btn" onclick="speakSlowly('Parent dashboard controls for adding coins, XP, housework, kindness coins, and rulebook penalties.')">🔊 Listen</button>
+        </div>
+        <hr style="border:0; border-top:2px solid #e2e8f0; margin:10px 0 15px 0;">
+        
+        <!-- Supabase Connection Config -->
+        <div class="card" style="border-left-color: #0ea5e9; background:#f0f9ff; flex-direction:column; align-items:stretch; gap:8px;">
+            <b>🛠️ Supabase Connection Key Settings <button class="speak-btn" onclick="speakSlowly('Supabase connection settings')">🔊</button></b>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <input type="text" id="configUrlInput" placeholder="Supabase URL" style="flex:1; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.85rem;" value="https://sxbnkovgoznpsahioorg.supabase.co">
+                <input type="text" id="configKeyInput" placeholder="Supabase Anon Key" style="flex:2; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.85rem;" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym5rb3Znb3pucHNhaGlvb3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDk5MTcsImV4cCI6MjEwNTgyNTkxN30.-mg0SDhCylLt609zUDDpPO8ZOWkUwlRH6ABOEprarrE">
+                <button class="action-btn" onclick="reconnectSupabase()">Connect</button>
+            </div>
+        </div>
+
+        <!-- PARENT COIN CONTROLS -->
+        <h3 style="color: var(--primary-dark); font-size: 1rem; margin-top: 15px;">🪙 Separate Coin Controls <button class="speak-btn" onclick="speakSlowly('Coin controls')">🔊</button></h3>
+        <div class="card" style="border-left-color: #0ea5e9;">
+            <span>Coin Manager (Current: <span id="adminCoinDisplay">8</span> Coins) <button class="speak-btn" onclick="speakSlowly('Coin manager')">🔊</button></span>
+            <div style="display:flex; gap:6px;">
+                <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 0, 'Parent Add Coin (+1)')">+1 Coin</button>
+                <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 1, 0, 'Parent Deduct Coin (-1)')">-1 Coin</button>
+            </div>
+        </div>
+
+        <!-- PARENT XP CONTROLS (Multiples of 5) -->
+        <h3 style="color: var(--primary-dark); font-size: 1rem; margin-top: 15px;">⭐ Separate XP Controls (Multiples of 5) <button class="speak-btn" onclick="speakSlowly('Experience point controls')">🔊</button></h3>
+        <div class="card" style="border-left-color: #6366f1;">
+            <span>XP Manager (Current: <span id="adminXpDisplay">40</span> XP) <button class="speak-btn" onclick="speakSlowly('Experience point manager')">🔊</button></span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="action-btn" style="background:#6366f1;" onclick="addCustomXp(5)">+5 XP</button>
+                <button class="action-btn" style="background:#6366f1;" onclick="addCustomXp(10)">+10 XP</button>
+                <button class="action-btn" style="background:#6366f1;" onclick="addCustomXp(25)">+25 XP</button>
+                <button class="action-btn" style="background:#f97316;" onclick="addCustomXp(-5)">-5 XP</button>
+            </div>
+        </div>
+
+        <!-- HOUSEWORK & KINDNESS REWARD BONUSES -->
+        <h3 style="color: var(--primary-dark); font-size: 1rem; margin-top: 15px;">🧹 Housework & Kindness Bonuses (Rulebook Act 1) <button class="speak-btn" onclick="speakSlowly('Housework and Kindness Bonuses')">🔊</button></h3>
+        <div class="card" style="border-left-color: #10b981;">
+            <span>🧹 Housework / Chores (+1 to +3 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Housework chores')">🔊</button></span>
+            <div style="display:flex; gap:6px;">
+                <button class="action-btn btn-learning" onclick="requestAdminAction('add', 1, 5, 'Housework (+1)')">+1</button>
+                <button class="action-btn btn-learning" onclick="requestAdminAction('add', 2, 10, 'Housework (+2)')">+2</button>
+                <button class="action-btn btn-learning" onclick="requestAdminAction('add', 3, 15, 'Housework (+3)')">+3</button>
+            </div>
+        </div>
+        <div class="card" style="border-left-color: #10b981;">
+            <span>💖 Kindness / Patience / Low Voice (+2 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Kindness bonus')">🔊</button></span>
+            <button class="action-btn btn-learning" onclick="requestAdminAction('add', 2, 10, 'Kindness Bonus')">Award (+2 Coins)[cite: 1]</button>
+        </div>
+
+        <!-- OFFICIAL RULEBOOK PENALTIES -->
+        <h3 style="color: #ef4444; font-size: 1rem; margin-top: 20px;">⚠️ Official Rulebook Penalties (Act 3) <button class="speak-btn" onclick="speakSlowly('Official Rulebook Penalties')">🔊</button></h3>
+        <div class="card card-penalty">
+            <span>🗣️ Shouting & Screaming (-3 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Shouting and screaming penalty')">🔊</button></span>
+            <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 3, 15, 'Shouting & Screaming Penalty')">Deduct (-3)[cite: 1]</button>
+        </div>
+        <div class="card card-penalty">
+            <span>📝 Avoiding Worksheets (-3 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Avoiding worksheets penalty')">🔊</button></span>
+            <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 3, 15, 'Avoiding Worksheets Penalty')">Deduct (-3)[cite: 1]</button>
+        </div>
+        <div class="card card-penalty">
+            <span>👥 Refusing to Stop Playing with Friends (-3 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Refusing to stop playing with friends penalty')">🔊</button></span>
+            <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 3, 15, 'Refusing to Stop Playing Penalty')">Deduct (-3)[cite: 1]</button>
+        </div>
+        <div class="card card-penalty">
+            <span>📱 Refusing to Stop Devices (-5 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Refusing to stop devices penalty')">🔊</button></span>
+            <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 5, 25, 'Refusing to Stop Devices Penalty')">Deduct (-5)[cite: 1]</button>
+        </div>
+        <div class="card card-penalty">
+            <span>🚨 Persistent Rule Breaking / Zero Coin Lockdown (-10 Coins)[cite: 1] <button class="speak-btn" onclick="speakSlowly('Persistent rule breaking lockdown')">🔊</button></span>
+            <button class="action-btn btn-penalty" onclick="requestAdminAction('spend', 10, 50, 'Persistent Rule Breaking Lockdown')">Trigger Lockdown (-10)[cite: 1]</button>
+        </div>
+
+        <!-- LIVE AUDIT TIMELINE -->
+        <h3 style="color: var(--primary-dark); font-size: 1rem; margin-top: 20px;">📜 Live Audit Timeline <button class="speak-btn" onclick="speakSlowly('Live Audit Timeline')">🔊</button></h3>
+        <div class="timeline-box" id="timelineBox">[Supabase Cloud Connected.]</div>
+    </div>
+
+</div>
+
+<script>
+    let SUPABASE_URL = 'https://sxbnkovgoznpsahioorg.supabase.co';
+    let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym5rb3Znb3pucHNhaGlvb3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDk5MTcsImV4cCI6MjEwNTgyNTkxN30.-mg0SDhCylLt609zUDDpPO8ZOWkUwlRH6ABOEprarrE';
+    let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let coins = 3;
+    let xp = 0;
+    let streak = 1;
+    let currentAvatar = 'assets/noah.JPG';
+    let currentTheme = 'theme-default';
+
+    const ADMIN_PIN = "1717";
+    let pendingAction = null; 
+    let enteredPinInput = "";
+    let targetViewAfterPin = null;
+
+    // --- SCREEN TIME TESTING CONFIG ---
+    // Change this value easily for testing (e.g., 25 minutes = 1500 seconds, or set to 30 seconds for quick testing!)
+    let entertainmentSecondsLeft = 1500; 
+    let entertainmentTimerInterval = null;
+    let externalAppWindow = null;
+
+    // --- Web Audio Sound Effects Generator ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        
+        let osc = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        let now = audioCtx.currentTime;
+
+        if (type === 'coin') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.08);
+            osc.frequency.setValueAtTime(783.99, now + 0.15);
+            gainNode.gain.setValueAtTime(0.2, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+        } else if (type === 'penalty') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.setValueAtTime(120, now + 0.15);
+            gainNode.gain.setValueAtTime(0.25, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'spin') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(600, now + 0.1);
+            gainNode.gain.setValueAtTime(0.15, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        }
+    }
+
+   let lockdownTimerInterval = null;
+    let lockdownSecondsTotal = 8 * 0 * 0 * 0; // Default 2 Weeks in seconds (or change for testing)
+
+    async function checkLockdown() {
+        const lockdownModal = document.getElementById('lockdownModal');
+        if (coins <= 0) {
+            lockdownModal.style.display = 'block';
+            startLockdownCountdown();
+        } else {
+            lockdownModal.style.display = 'none';
+            if (lockdownTimerInterval) {
+                clearInterval(lockdownTimerInterval);
+                lockdownTimerInterval = null;
+            }
+        }
+    }
+
+    async function startLockdownCountdown() {
+        if (lockdownTimerInterval) return;
+
+        // Try to fetch existing timer from Supabase app_timers table
+        try {
+            const { data } = await supabaseClient
+                .from('app_timers')
+                .select('*')
+                .eq('timer_name', 'lockdown_timer')
+                .single();
+
+            if (data && data.seconds_left > 0) {
+                lockdownSecondsTotal = data.seconds_left;
+            } else {
+                // Initialize to 2 weeks (1209600 seconds) if not set
+                lockdownSecondsTotal = 8 * 0 * 0 * 0; 
+            }
+        } catch (e) {
+            console.log("Using default lockdown time.");
+        }
+
+        lockdownTimerInterval = setInterval(async () => {
+            if (lockdownSecondsTotal > 0) {
+                lockdownSecondsTotal--;
+
+                // Format days, hours, mins, secs
+                let days = Math.floor(lockdownSecondsTotal / (3600 * 24));
+                let hours = Math.floor((lockdownSecondsTotal % (3600 * 24)) / 3600);
+                let mins = Math.floor((lockdownSecondsTotal % 3600) / 60);
+                let secs = lockdownSecondsTotal % 60;
+
+                let timeString = `${days}d ${hours}h ${mins}m ${secs}s`;
+                let timerElement = document.getElementById('lockdownCountdownTimer');
+                if (timerElement) {
+                    timerElement.innerText = timeString;
+                }
+
+                // Sync to Supabase every 10 seconds to save state
+                if (lockdownSecondsTotal % 10 === 0) {
+                    await supabaseClient
+                        .from('app_timers')
+                        .upsert({ timer_name: 'lockdown_timer', seconds_left: lockdownSecondsTotal, updated_at: new Date() });
+                }
+            } else {
+                clearInterval(lockdownTimerInterval);
+                lockdownTimerInterval = null;
+            }
+        }, 1000);
+    }
+
+    async function loadCloudData() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('noah_progress')
+                .select('*')
+                .eq('id', 1)
+                .single();
+
+            if (error) {
+                logTimeline("⚠️ Cloud load failed, using local fallback.");
+                return;
+            }
+
+            if (data) {
+                coins = data.coins;
+                xp = data.xp;
+                streak = data.streak;
+                currentAvatar = data.avatar || 'assets/noah.JPG';
+                currentTheme = data.theme || 'theme-default';
+                updateUIState();
+                logTimeline("☁️ Synced successfully with Supabase!");
+            }
+
+            const { data: timerData } = await supabaseClient
+                .from('app_timers')
+                .select('*')
+                .eq('timer_name', 'lockdown_timer')
+                .single();
+            if (timerData) {
+                logTimeline("⏱️ Persistent timer loaded from Supabase.");
+            }
+        } catch (err) {
+            console.error("Fetch exception:", err);
+        }
+    }
+
+    async function persistCloudData() {
+        try {
+            await supabaseClient
+                .from('noah_progress')
+                .update({
+                    coins: coins,
+                    xp: xp,
+                    streak: streak,
+                    avatar: currentAvatar,
+                    theme: currentTheme,
+                    updated_at: new Date()
+                })
+                .eq('id', 1);
+        } catch (err) {
+            console.error("Save exception:", err);
+        }
+    }
+
+    function reconnectSupabase() {
+        SUPABASE_URL = document.getElementById('configUrlInput').value.trim();
+        SUPABASE_KEY = document.getElementById('configKeyInput').value.trim();
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            logTimeline("🔄 Reconnected Supabase!");
+            loadCloudData();
+            alert("✅ Successfully reconnected to Supabase!");
+        } catch (e) {
+            alert("❌ Connection error. Check your URL and key.");
+        }
+    }
+
+    function calculateRank(currentXp) {
+        if (currentXp >= 100) return "Galaxy Guardian 🌌";
+        if (currentXp >= 50) return "Quest Master ⚡";
+        return "Novice Explorer 🧭";
+    }
+
+    function updateUIState() {
+        document.getElementById('homeCoinCount').innerText = coins;
+        document.getElementById('storeCoinBalance').innerText = coins;
+        document.getElementById('adminCoinDisplay').innerText = coins;
+        document.getElementById('homeXpCount').innerText = xp;
+        document.getElementById('adminXpDisplay').innerText = xp;
+        document.getElementById('homeStreakCount').innerText = streak;
+        document.getElementById('homeRankTitle').innerText = calculateRank(xp);
+        document.getElementById('avatarImgDisplay').src = currentAvatar;
+        document.body.className = currentTheme;
+        checkLockdown();
+    }
+
+    function checkLockdown() {
+        const lockdownModal = document.getElementById('lockdownModal');
+        if (coins <= 0) {
+            lockdownModal.style.display = 'block';
+        } else {
+            lockdownModal.style.display = 'none';
+        }
+    }
+
+    function switchView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        if(viewId === 'tasksView') loadDailyTasks();
+    }
+
+    function requestAdminViewAccess() {
+        targetViewAfterPin = 'adminView';
+        pendingAction = null;
+        enteredPinInput = "";
+        document.getElementById('pinDisplay').innerText = "****";
+        document.getElementById('pinModal').style.display = 'flex';
+    }
+
+    function speakSlowly(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.7;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function openTopicModal(title, videoUrl, explanation, diagramImgPath, liveWorksheetUrl) {
+        document.getElementById('modalTopicTitle').innerText = title;
+        document.getElementById('modalVideoIframe').src = videoUrl;
+        document.getElementById('modalExplanationText').innerText = explanation;
+
+        const diagramContainer = document.getElementById('modalDiagramContainer');
+        if (diagramImgPath && diagramImgPath.trim() !== '') {
+            diagramContainer.innerHTML = `<img src="${diagramImgPath}" alt="Lesson Diagram" class="lesson-diagram" />`;
+        } else {
+            diagramContainer.innerHTML = '';
+        }
+
+        const worksheetBox = document.getElementById('worksheetContentBox');
+        if (liveWorksheetUrl && liveWorksheetUrl.trim() !== '') {
+            worksheetBox.innerHTML = `
+                <iframe src="${liveWorksheetUrl}" width="100%" height="400px" style="border:none; border-radius:6px;"></iframe>
+                <div style="margin-top:8px; font-size:0.8rem; color:#94a3b8;">If worksheet fails to load inside frame, click below:</div>
+                <a href="${liveWorksheetUrl}" target="_blank" class="action-btn" style="margin-top:5px; text-decoration:none; display:inline-block;">Open Worksheet in New Tab</a>
+            `;
+        } else {
+            worksheetBox.innerHTML = `<p style="color:#94a3b8;">No interactive worksheet attached for this topic.</p>`;
+        }
+
+        document.getElementById('modalSpeakBtn').onclick = function() { 
+            speakSlowly(explanation + ". Listen to the lesson video and complete the worksheet activity."); 
+        };
+        document.getElementById('topicModal').style.display = 'block';
+    }
+
+    function closeTopicModal() {
+        window.speechSynthesis.cancel();
+        document.getElementById('modalVideoIframe').src = "";
+        document.getElementById('topicModal').style.display = 'none';
+    }
+
+    function openTimedExternalApp(url, appName) {
+        if (entertainmentSecondsLeft <= 0) {
+            alert("⏳ Free tab time has expired for today!");
+            return;
+        }
+
+        externalAppWindow = window.open(url, '_blank');
+        logTimeline(`Launched ${appName} in browser window with active timer.`);
+        startEntertainmentTimer();
+        switchView('homeView');
+    }
+
+    function startEntertainmentTimer() {
+        if (!entertainmentTimerInterval) {
+            entertainmentTimerInterval = setInterval(() => {
+                if (entertainmentSecondsLeft > 0) {
+                    entertainmentSecondsLeft--;
+                    let mins = Math.floor(entertainmentSecondsLeft / 60);
+                    let secs = entertainmentSecondsLeft % 60;
+                    let timeFormatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                    document.getElementById('sharedTimeDisplay').innerText = `${timeFormatted} Mins`;
+                    document.getElementById('youtubeTimerStatus').innerText = `Timer Active: ${timeFormatted}`;
+                    document.getElementById('robloxTimerStatus').innerText = `Timer Active: ${timeFormatted}`;
+                } else {
+                    clearInterval(entertainmentTimerInterval);
+                    entertainmentTimerInterval = null;
+                    if (externalAppWindow && !externalAppWindow.closed) {
+                        externalAppWindow.close();
+                    }
+                    alert("⚠️ Free tab time is up! Browser window closed.");
+                }
+            }, 1000);
+        }
+    }
+
+    function buyStoreItem(itemName, cost) {
+        const remaining = coins - cost;
+        const warningContainer = document.getElementById('warningBannerContainer');
+        const warningContent = document.getElementById('warningMessageContent');
+
+        if (remaining <= 0) {
+            let msg = `If you spend ${cost} coins for that ${itemName}, you will have ${Math.max(0, remaining)} coins leading to lockdown. Not allowed.`;
+            warningContent.innerText = msg;
+            warningContainer.style.display = 'block';
+            speakSlowly(msg);
+            return;
+        }
+
+        warningContainer.style.display = 'none';
+        coins -= cost;
+        persistCloudData();
+        updateUIState();
+        playSound('coin');
+        logTimeline(`Purchased item from store: ${itemName} for ${cost} coins`);
+        alert(`🎉 Success! You purchased "${itemName}" for ${cost} coins!`);
+    }
+
+    function buyTheme(themeClass, cost) {
+        const remaining = coins - cost;
+        const warningContainer = document.getElementById('warningBannerContainer');
+        const warningContent = document.getElementById('warningMessageContent');
+
+        if (remaining <= 0) {
+            let msg = `If you spend ${cost} coins for that theme, you will have ${Math.max(0, remaining)} coins leading to lockdown. Not allowed.`;
+            warningContent.innerText = msg;
+            warningContainer.style.display = 'block';
+            speakSlowly(msg);
+            return;
+        }
+
+        warningContainer.style.display = 'none';
+        coins -= cost;
+        currentTheme = themeClass;
+        document.body.className = currentTheme;
+        persistCloudData();
+        updateUIState();
+        playSound('coin');
+        logTimeline(`Purchased and applied theme: ${themeClass}`);
+        alert("🎉 Success! Theme unlocked and applied!");
+    }
+
+    function spinMysteryWheel() {
+        const cost = 2;
+        const remaining = coins - cost;
+        const warningContainer = document.getElementById('warningBannerContainer');
+        const warningContent = document.getElementById('warningMessageContent');
+
+        if (remaining < 0) {
+            let msg = `If you spend ${cost} coins for that spin, you will have ${Math.max(0, remaining)} coins leading to lockdown. Not allowed.`;
+            warningContent.innerText = msg;
+            warningContainer.style.display = 'block';
+            speakSlowly(msg);
+            return;
+        }
+
+        warningContainer.style.display = 'none';
+        coins -= cost;
+        persistCloudData();
+        updateUIState();
+
+        const btn = document.getElementById('spinWheelBtn');
+        const status = document.getElementById('spinStatusText');
+        btn.classList.add('spinning');
+        status.innerText = "🎡 Spinning with animations & sound...";
+        playSound('spin');
+
+        setTimeout(() => {
+            btn.classList.remove('spinning');
+            const outcomes = [
+                { label: "Nothing", coins: 0, xp: 0 },
+                { label: "1 Coin", coins: 1, xp: 5 },
+                { label: "2 Coins", coins: 2, xp: 10 },
+                { label: "Jackpot 5 Coins", coins: 5, xp: 25 }
+            ];
+            let won = outcomes[Math.floor(Math.random() * outcomes.length)];
+            
+            if (won.coins > 0) {
+                coins += won.coins;
+                xp += won.xp;
+                playSound('coin');
+                status.innerText = `🎉 You won ${won.label}! (+${won.coins} Coins, +${won.xp} XP)`;
+                speakSlowly(`You won ${won.label}!`);
+            } else {
+                status.innerText = `😢 So close! You won Nothing.`;
+                speakSlowly(`You won Nothing.`);
+            }
+            persistCloudData();
+            updateUIState();
+        }, 1200);
+    }
+
+    function claimTaskElement(buttonElement, coinVal, xpVal, taskName) {
+        executeAdminAction('add', coinVal, xpVal, taskName);
+        let card = buttonElement.closest('.card, .topic-row');
+        if (card) {
+            card.classList.add('completed-task');
+        }
+        buttonElement.innerText = "Claimed ✔";
+        buttonElement.disabled = true;
+    }
+
+    function addCustomXp(amount) {
+        xp = Math.max(0, xp + amount);
+        persistCloudData();
+        updateUIState();
+        playSound('coin');
+        logTimeline(`Adjusted XP by ${amount > 0 ? '+' : ''}${amount} XP`);
+    }
+
+    function requestAdminAction(type, amount, xpAmount, desc) {
+        pendingAction = { type, amount, xpAmount, desc };
+        targetViewAfterPin = null;
+        enteredPinInput = "";
+        document.getElementById('pinDisplay').innerText = "****";
+        document.getElementById('pinModal').style.display = 'flex';
+    }
+
+    function pressKey(num) {
+        if (enteredPinInput.length < 4) {
+            enteredPinInput += num;
+            document.getElementById('pinDisplay').innerText = "*".repeat(enteredPinInput.length);
+        }
+    }
+
+    function clearPin() { enteredPinInput = ""; document.getElementById('pinDisplay').innerText = "****"; }
+    function closePinModal() { document.getElementById('pinModal').style.display = 'none'; pendingAction = null; targetViewAfterPin = null; enteredPinInput = ""; }
+
+    function submitPin() {
+        if (enteredPinInput === ADMIN_PIN) {
+            document.getElementById('pinModal').style.display = 'none';
+            if (targetViewAfterPin) { switchView(targetViewAfterPin); targetViewAfterPin = null; }
+            else if (pendingAction) { executeAdminAction(pendingAction.type, pendingAction.amount, pendingAction.xpAmount, pendingAction.desc); }
+        } else { alert("❌ Incorrect PIN!"); clearPin(); }
+    }
+
+    function executeAdminAction(actionType, amount, xpAmount, description) {
+        if (actionType === 'add' || actionType === 'lift_lockdown') {
+            if (actionType === 'add') { 
+                coins += amount; 
+                xp += xpAmount; 
+                playSound('coin');
+                logTimeline(`Added +${amount} coins, +${xpAmount} XP: ${description}`); 
+            } else { 
+                coins = 8; 
+                playSound('coin');
+                logTimeline(`Lockdown lifted. Balance restored to 8.`); 
+            }
+        } else if (actionType === 'spend') {
+            coins -= amount;
+            xp = Math.max(0, xp - xpAmount);
+            playSound('penalty');
+            if (coins < 0) coins = 0;
+            logTimeline(`Deducted -${amount} coins, -${xpAmount} XP: ${description}`);
+            if (coins === 0) {
+                logTimeline(`Penalty applied. Balance hit 0 - Strict Rulebook Lockdown Triggered.`);
+            }
+        }
+        persistCloudData();
+        updateUIState();
+    }
+
+    function logTimeline(message) {
+        const timelineBox = document.getElementById('timelineBox');
+        if (timelineBox) {
+            timelineBox.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${message}`;
+            timelineBox.scrollTop = timelineBox.scrollHeight;
+        }
+    }
+
+    function loadDailyTasks() {
+        const container = document.getElementById('dynamicTasksContainer');
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        let dayIndex = new Date().getDay();
+        let day = days[dayIndex];
+        document.getElementById('dayTitle').innerText = `📋 Quests for ${day}`;
+
+        let taskListHtml = '';
+
+        if (dayIndex === 0) { // Sunday
+            taskListHtml += `
+                <div class="card"><span>Task 1: Make the bed (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Make the bed')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 2: Set up your bag and uniform (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Set up bag and uniform')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 3: Daily Reading / Focus (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Daily Reading')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 4: Evening Cleanup (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Evening Cleanup')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+            `;
+        } else if (dayIndex >= 1 && dayIndex <= 3) { // Mon, Tue, Wed
+            taskListHtml += `
+                <div class="card"><span>Task 1: Make the bed & Bag Prep (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Make the bed and bag prep')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 2: Put clothes and shoes away(+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Put clothes and shoes away')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 3: Study current topics (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Study current topics')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 4: Clean the table (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Clean the table')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+            `;
+        } else if (dayIndex === 4) { // Thursday
+            taskListHtml += `
+                <div class="card"><span>Task 1: Put clothes and shoes away (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Clothes and shoes away')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 2: Help others (Anything) (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Help others with anything')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 3: Clean the table (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Clean the table')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 4: Complete school work (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Complete school work')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+            `;
+        } else if (dayIndex === 5) { // Friday
+            taskListHtml += `
+                <div class="card"><span>Task 1: Complete School Recap (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Complete school recap')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 2: Organize living room (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('organize living room')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 3: Clean the table (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Clean the table')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 4: Help do chores (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Help do chores')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+            `;
+        } else { // Saturday
+            taskListHtml += `
+                <div class="card"><span>Task 1: Morning Room Tidy (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Morning Room Tidy')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 2: Help Family Chores (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Help Family Chores')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 3: Organize Belongings (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('Organize Belongings')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+                <div class="card"><span>Task 4: Organize living room (+1 Coin, +5 XP) <button class="speak-btn" onclick="speakSlowly('organize living room')">🔊</button></span><button class="action-btn" onclick="requestAdminAction('add', 1, 5, 'Learning Task')">Claim</button></div>
+            `;
+        }
+
+        container.innerHTML = taskListHtml;
+    }
+
+    // 1. YOUR CLASS MATERIALS DATABASE
+    const lessonDatabase = {
+        "hare_tortoise": {
+        title: "Story: Hare and the tortoise",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+        "utw_plant_life": {
+        title: "UTW: Life Cycle of a plant",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+        "utw_germination": {
+        title: "UTW: Germination",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+        "utw_plant_parts": {
+        title: "UTW: Parts of a plant",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+        "no_1-20": {
+        title: "Numeracy: Counting from 1-20",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+        "no-shapes": {
+        title: "Numeracy: Shapes",
+        videoUrl: "https://www.youtube.com/embed/eMXmMHVNx4U", 
+        storyText: "Once upon a time, a speedy Hare and a slow Tortoise had a race. The Hare was so far ahead that he decided to take a nap under a tree. While the Hare was sleeping, the Tortoise kept walking, step by step, without ever stopping. When the Hare woke up, he saw the Tortoise crossing the finish line first! The Tortoise won the race because slow and steady wins the race.",
+        worksheetUrl: "https://www.liveworksheets.com/worksheet/en/english-second-language-esl/311833"
+        },
+    };
+
+    // 2. THE GLOBAL EVENT LISTENER
+    document.addEventListener('click', function(event) {
+        const button = event.target.closest('.btn-lesson');
+        if (!button) return; 
+
+        const lessonId = button.getAttribute('data-lesson');
+        const lesson = lessonDatabase[lessonId];
+  
+        if (!lesson) return;
+
+        // Passes the full, un-edited string to your custom modal function
+        openTopicModal(lesson.title, lesson.videoUrl, lesson.storyText, '', lesson.worksheetUrl);
+
+        setTimeout(() => { 
+            const modal = document.getElementById('topicModal');
+            if (modal) modal.scrollTo({ top: 0, behavior: 'smooth' }); 
+        }, 50);
+    });
+
+    loadCloudData();
+</script>
+
+</body>
+</html>
